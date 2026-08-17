@@ -1,0 +1,45 @@
+/adi_imu_node:
+  ros__parameters:
+    # Core parameters
+    measured_data_topic_selection: 2
+    
+    # Covariance settings
+    covariance:
+      enable: true
+      algorithm: "ewma"
+      
+      static:
+        accel_variance_x: 0.01
+        accel_variance_y: 0.01
+        accel_variance_z: 0.01
+        gyro_variance_x: 0.001
+        gyro_variance_y: 0.001
+        gyro_variance_z: 0.001
+      
+      welford:
+        calibration_samples: 1000
+        min_variance: 1.0e-9
+      
+      sliding_window:
+        window_size: 500
+        min_samples: 100
+        min_variance: 1.0e-9
+      
+      ewma:
+        alpha: 0.1
+        warmup_samples: 100
+        min_variance: 1.0e-9
+      
+      kalman:
+        process_noise_q: 1.0e-4
+        measurement_noise_r: 1.0e-4
+        initial_variance: 1.0e-4
+        warmup_samples: 100
+        min_variance: 1.0e-9
+
+      # Motion detection: only update covariance when sensor is stationary
+      # This prevents motion-induced variance inflation
+      motion_detection:
+        enable: true
+        gyro_threshold: 0.05      # Max angular velocity magnitude (rad/s)
+        accel_threshold: 0.5      # Max deviation from gravity (m/s^2)

@@ -24,9 +24,11 @@
 namespace adi_imu
 {
 
-ImuDataProvider::ImuDataProvider() {}
+ImuDataProvider::ImuDataProvider() : m_frame_id("imu") {}
 
 ImuDataProvider::~ImuDataProvider() {}
+
+void ImuDataProvider::setFrameId(const std::string & frame_id) { m_frame_id = frame_id; }
 
 bool ImuDataProvider::getData(sensor_msgs::msg::Imu & message)
 {
@@ -40,12 +42,50 @@ bool ImuDataProvider::getData(sensor_msgs::msg::Imu & message)
   message.angular_velocity.y = m_iio_wrapper.getBuffAngularVelocityY();
   message.angular_velocity.z = m_iio_wrapper.getBuffAngularVelocityZ();
 
-  message.header.frame_id = "imu";
+  message.header.frame_id = m_frame_id;
   m_iio_wrapper.getBuffSampleTimestamp(message.header.stamp.sec, message.header.stamp.nanosec);
 
+  // No orientation provided direclty by the IMU
   message.orientation_covariance[0] = -1;
 
+  // Handle covariance if provider is set
+  if (m_covariance_provider) {
+    //Feed sample for calibration/adaptation
+    adi_imu::Vec3 accel = message.linear_acceleration;
+    adi_imu::Vec3 gyro = message.angular_velocity;
+
+    m_covariance_provider->addSample(accel, gyro);
+    if (m_covariance_provider->isReady()) {
+      // Copy covariance to message
+      auto accel_cov = m_covariance_provider->getAccelCovariance();
+      auto gyro_cov = m_covariance_provider->getGyroCovariance();
+
+      std::copy(accel_cov.begin(), accel_cov.end(), message.linear_acceleration_covariance.begin());
+      std::copy(gyro_cov.begin(), gyro_cov.end(), message.angular_velocity_covariance.begin());
+    } else {
+      // Set to zero to indicate unknown covariance during calibration
+      std::fill(
+        message.linear_acceleration_covariance.begin(),
+        message.linear_acceleration_covariance.end(), 0);
+      std::fill(
+        message.angular_velocity_covariance.begin(), message.angular_velocity_covariance.end(), 0);
+    }
+  } else {
+    // No covariance provider - set to unknown
+    std::fill(
+      message.linear_acceleration_covariance.begin(), message.linear_acceleration_covariance.end(),
+      0);
+    std::fill(
+      message.angular_velocity_covariance.begin(), message.angular_velocity_covariance.end(), 0);
+  }
+
   return true;
+}
+
+// Method for setting the covariance provider
+void ImuDataProvider::setCovarianceProvider(ImuCovarianceInterface * provider)
+{
+  m_covariance_provider = provider;
 }
 
 }  // namespace adi_imu

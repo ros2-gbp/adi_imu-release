@@ -22,6 +22,7 @@
 #include "adi_imu/adis_device_factory.h"
 #include "adi_imu/adis_register_map.h"
 #include "adi_imu/imu_control_parameters.h"
+#include "adi_imu/imu_covariance_factory.h"  // New covariance feature
 #include "adi_imu/imu_data_provider.h"
 #include "adi_imu/imu_diag_data_provider.h"
 #include "adi_imu/imu_diag_ros_publisher.h"
@@ -91,6 +92,14 @@ int main(int argc, char * argv[])
   auto ident_data_enable =
     imu_node->get_parameter("ident_data_enable").get_parameter_value().get<bool>();
 
+  auto frame_id_param_desc = rcl_interfaces::msg::ParameterDescriptor{};
+  frame_id_param_desc.description =
+    "\nThe TF frame ID for the IMU sensor (e.g., source_x/imu). Useful when multiple IMUs are "
+    "used.";
+  imu_node->declare_parameter("frame_id", "imu", frame_id_param_desc);
+
+  auto frame_id = imu_node->get_parameter("frame_id").get_parameter_value().get<std::string>();
+
   /* First make sure IIO context is available */
   std::string context =
     imu_node->get_parameter("iio_context_string").get_parameter_value().get<std::string>();
@@ -113,8 +122,25 @@ int main(int argc, char * argv[])
   accel_gyro_publisher->setMessageProvider(accel_gyro_data_provider);
 
   adi_imu::ImuDataProviderInterface * imu_std_data_provider = new adi_imu::ImuDataProvider();
+  imu_std_data_provider->setFrameId(frame_id);
   adi_imu::ImuRosPublisherInterface * imu_std_publisher = new adi_imu::ImuRosPublisher(imu_node);
   imu_std_publisher->setMessageProvider(imu_std_data_provider);
+
+  //==============Covariance provider setup================
+  // Create covariance provider from ROS2 parameters.
+  // The factory declares parameters and creates the appropriate provider
+  std::unique_ptr<adi_imu::ImuCovarianceInterface> covariance_provider =
+    adi_imu::ImuCovarianceFactory::createFromParameters(imu_node);
+
+  // Inject covariance provider into IMU data provider if enabled
+  if (covariance_provider) {
+    imu_std_data_provider->setCovarianceProvider(covariance_provider.get());
+    RCLCPP_INFO(imu_node->get_logger(), "Covariance provider attached to ImuDataProvider.");
+  } else {
+    RCLCPP_INFO(
+      imu_node->get_logger(), "Covariance computation disabled (covariance.enable = false).");
+  }
+  //=======================================================
 
   adi_imu::VelAngTempDataProviderInterface * vel_ang_data_provider = nullptr;
   adi_imu::VelAngTempRosPublisherInterface * vel_ang_publisher = nullptr;
@@ -199,24 +225,11 @@ int main(int argc, char * argv[])
   }
   publisher_group_thread.join();
 
-  // Cleanup resources
-  if (device_descriptor->has(adi_imu::ADISRegister::HAS_DELTA_BURST)) {
-    if (vel_ang_data_provider != nullptr) {
-      delete vel_ang_data_provider;
-    }
-    if (vel_ang_publisher != nullptr) {
-      delete vel_ang_publisher;
-    }
+  // Cleanup resources. Deleting publishers also deletes their respective providers
+  if (vel_ang_publisher != nullptr) {
+    delete vel_ang_publisher;
   }
-  delete full_data_provider;
-  delete imu_std_data_provider;
 
-  if (diag_data_enable) {
-    delete diag_data_provider;
-  }
-  if (ident_data_provider != nullptr) {
-    delete ident_data_provider;
-  }
   if (ident_publisher != nullptr) {
     delete ident_publisher;
   }
