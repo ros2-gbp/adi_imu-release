@@ -21,9 +21,13 @@
 #define ADI_IMU__IMU_DATA_PROVIDER_INTERFACE_H_
 
 #include <sensor_msgs/msg/imu.hpp>
+#include <string>
 
 namespace adi_imu
 {
+
+// Forward declaration of covariance interface
+class ImuCovarianceInterface;
 
 /**
  * @brief Interface for standard message sensor_msgs::msg::Imu data provider.
@@ -42,12 +46,24 @@ public:
   virtual ~ImuDataProviderInterface() {}
 
   /**
+   * @brief Set the frame ID for the IMU messages.
+   * @param frame_id The TF frame ID to use for the IMU messages.
+   */
+  virtual void setFrameId(const std::string & frame_id) = 0;
+
+  /**
    * @brief Populate Imu message with measured data.
    * @param message Message containing the measured data.
    * @return Return true if the message parameter is successfully populated with
    * measured data and false otherwise.
    */
   virtual bool getData(sensor_msgs::msg::Imu & message) = 0;
+
+  /**
+  * @brief Method to set the desired covariance algorithm
+  * @param provider The provider can be an instance of: Static, Welford or SlidingWindow providers
+   */
+  virtual void setCovarianceProvider(ImuCovarianceInterface * provider) = 0;
 };
 
 }  // namespace adi_imu
