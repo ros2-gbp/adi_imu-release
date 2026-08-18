@@ -1,0 +1,12 @@
+Source: ros-lyrical-adi-imu
+Section: misc
+Priority: optional
+Maintainer: "Analog Devices" <Adrian.Stanea@analog.com>
+Build-Depends: debhelper (>= 9.0.0), libiio-dev, ros-lyrical-ament-cmake, ros-lyrical-ament-cmake-gtest <!nocheck>, ros-lyrical-ament-cmake-lint-cmake <!nocheck>, ros-lyrical-ament-cmake-xmllint <!nocheck>, ros-lyrical-ament-copyright <!nocheck>, ros-lyrical-ament-lint-auto <!nocheck>, ros-lyrical-ament-pep257 <!nocheck>, ros-lyrical-builtin-interfaces, ros-lyrical-geometry-msgs, ros-lyrical-rclcpp, ros-lyrical-rosidl-default-generators, ros-lyrical-sensor-msgs, ros-lyrical-std-msgs, ros-lyrical-ros-workspace, ros-lyrical-rosidl-typesupport-fastrtps-c, ros-lyrical-rosidl-typesupport-fastrtps-cpp
+Homepage: https://analogdevicesinc.github.io/imu_ros2/
+Standards-Version: 3.9.2
+
+Package: ros-lyrical-adi-imu
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libiio-dev, ros-lyrical-ament-cmake, ros-lyrical-builtin-interfaces, ros-lyrical-geometry-msgs, ros-lyrical-rclcpp, ros-lyrical-rosidl-default-runtime, ros-lyrical-sensor-msgs, ros-lyrical-std-msgs, ros-lyrical-ros-workspace
+Description: Publisher for ADI IMUs
